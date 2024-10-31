@@ -8,6 +8,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.test.context.support.WithUserDetails;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -16,8 +17,10 @@ import org.springframework.test.web.servlet.ResultActions;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
@@ -33,7 +36,7 @@ public class MemberControllerTests {
     void t1() throws Exception {
         //When
         ResultActions resultActions = mvc.perform(
-                        post("/member/login")
+                        post("/api/v1/member/login")
                                 .content("""
                                         {
                                         "username" : "user1",
@@ -45,15 +48,28 @@ public class MemberControllerTests {
                 .andDo(print());
 
         //Then
-        resultActions.andExpect(status().is2xxSuccessful());
+        resultActions.andExpect(status().is2xxSuccessful())
+                .andExpect(jsonPath("$.resultCode").value("S-1"))
+                .andExpect(jsonPath("$.msg").exists())
+                .andExpect(jsonPath("$.data.accessToken").exists());
+    }
 
-        MvcResult mvcResult = resultActions.andReturn();
+    @Test
+    @WithUserDetails("user1")
+    @DisplayName("GET /member/me 는 myPage")
+    void t2() throws Exception {
+        //When
+        ResultActions resultActions = mvc.perform(
+                        get("/api/v1/member/me")
+                )
+                .andDo(print());
 
-        MockHttpServletResponse response = mvcResult.getResponse();
-
-        String authentication = response.getHeader("Authentication");
-
-        assertThat(authentication).isNotEmpty();
+        //Then
+        resultActions.andExpect(status().is2xxSuccessful())
+                .andExpect(jsonPath("$.resultCode").value("S-1"))
+                .andExpect(jsonPath("$.msg").exists())
+                .andExpect(jsonPath("$.data.member.id").exists())
+                .andExpect(jsonPath("$.data.member.userName").value("user1"));
     }
 
 
